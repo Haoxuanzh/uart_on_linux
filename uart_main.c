@@ -13,7 +13,7 @@
 /***************************************************************************************************
 	This app can open a serial device which is the first parameter delivered to the main function,
 and send a string, then, receive it.
-problem: the action stoped after reviewing the sent data.
+	version: 1.2
 ***************************************************************************************************/
 
 
@@ -41,8 +41,11 @@ int main(int argc, char*argv[])
 	{
 		fprintf(stderr,"open serial terminal failed...\n");
 		return -1;
-	}	
-	UART_initialize(fd,B115200,0,8,1,0);
+	}
+
+	tcflush(fd,TCIOFLUSH);
+		
+	UART_initialize(fd,B115200,0,8,1,2);
 	while(flag=='y'||flag=='Y')
 	{
 		printf("Please type in the charactors you want to send~\t:");
@@ -56,7 +59,9 @@ int main(int argc, char*argv[])
 			continue;
 		}
 		printf("you have sent:\t%s(%dbytes)\n",send_buff,send_len);
-		//send_buff[0]='\0';
+		send_buff[0]='\0';
+
+		printf("start receive\n");
 		
 		
 		rev_len=read(fd,rev_buff,1024);
@@ -91,7 +96,7 @@ int open_uart(char* port_name)
 {
 	int fd;//the number standing for the uart port
 	//did I open the device successfully 
-	fd=open(port_name, O_RDWR|O_NOCTTY|O_NDELAY);
+	fd=open(port_name, O_RDWR|O_NOCTTY|O_NDELAY);//not block
 	if(fd == -1)
 	{
 		printf("can't open the tty port!\n");
@@ -100,12 +105,12 @@ int open_uart(char* port_name)
 	//whether the device is blocked
 	if(fcntl(fd, F_SETFL, 0) <0)
 	{
-		printf("fcntl failed!/n");
+		printf("fcntl failed!\n");
 		return(0);
 	}     
 	else
 	{
-		printf("fcntl=%d/n",fcntl(fd, F_SETFL,0));
+		printf("fcntl=%d\n",fcntl(fd, F_SETFL,0));
 	}
 	//whether the device is a tty?
 	if(isatty(fileno(stdin))==0)
@@ -170,9 +175,9 @@ int UART_initialize(int fd, speed_t speed, int flow_ctrl, int data_bits, int sto
     	}
 	
 	//set the number of bits
-	options.c_cflag &= ~CSIZE;//reset the other mark bits except the former ones
+	options.c_cflag &= ~CSIZE;//reset the bits mark bits except the former ones
 	switch(data_bits)
-	{	
+	{
 		case 5: options.c_cflag |= CS5;break;
 		case 6: options.c_cflag |= CS6;break;
 		case 7: options.c_cflag |= CS7;break;
@@ -210,7 +215,7 @@ int UART_initialize(int fd, speed_t speed, int flow_ctrl, int data_bits, int sto
 			return(0);
 	}
 	//close special output mode
-	options.c_cflag &= ~OPOST;//oflag!!!!
+	options.c_oflag &= ~OPOST;
 	
 	//wait time and minmum number of "bytes"
 	options.c_cc[VTIME]= 1;//wait for 0.1s
