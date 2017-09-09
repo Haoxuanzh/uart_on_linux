@@ -5,7 +5,23 @@
 #include <fcntl.h>
 #include <sys/types.h>
 #include <sys/stat.h>
-//version 1.0
+#include <string.h>
+
+
+
+
+/***************************************************************************************************
+	This app can open a serial device which is the first parameter delivered to the main function,
+and send a string, then, receive it.
+problem: the action stoped after reviewing the sent data.
+***************************************************************************************************/
+
+
+
+
+
+
+
 
 int open_uart(char* port_name);
 int UART_initialize(int fd, speed_t speed, int flow_ctrl, int data_bits, int stop_bits, int parity );
@@ -18,6 +34,8 @@ int main(int argc, char*argv[])
 	char rev_buff[1023];//read
 	char send_buff[1023];//write
 	char flag='y';
+	int rev_len;
+	int send_len;
 	fd= open_uart(argv[1]);
 	if(fd == 0)
 	{
@@ -29,13 +47,33 @@ int main(int argc, char*argv[])
 	{
 		printf("Please type in the charactors you want to send~\t:");
 		scanf("%s",send_buff);
-		write(fd,send_buff,1024);
-		printf("you have sent:\t%s\n",send_buff);
-		send_buff[0]='\0';
-		sleep(1);
-		read(fd,rev_buff,1024);
-		printf("you have received:%s\n",rev_buff);
 		getchar();
+		send_len=write(fd,send_buff,strlen(send_buff));
+		if(send_len<0)
+		{
+			fprintf(stderr,"send failed!\n");
+			send_buff[0]='\0';
+			continue;
+		}
+		printf("you have sent:\t%s(%dbytes)\n",send_buff,send_len);
+		//send_buff[0]='\0';
+		
+		
+		rev_len=read(fd,rev_buff,1024);
+		if(rev_len<0)
+		{
+			fprintf(stderr,"receive failed");
+			rev_buff[0]='\0';
+		}
+		else if (rev_len==0)
+		{
+			fprintf(stderr,"the port doesn't received any data!\n");
+		}
+		
+		else
+		{
+			printf("you have received:%s\n(%dbytes)",rev_buff,rev_len);
+		}
 		printf("Do you want to continue?(y/n):");
 		scanf("%c",&flag);
 		getchar();	
@@ -134,7 +172,7 @@ int UART_initialize(int fd, speed_t speed, int flow_ctrl, int data_bits, int sto
 	//set the number of bits
 	options.c_cflag &= ~CSIZE;//reset the other mark bits except the former ones
 	switch(data_bits)
-	{
+	{	
 		case 5: options.c_cflag |= CS5;break;
 		case 6: options.c_cflag |= CS6;break;
 		case 7: options.c_cflag |= CS7;break;
@@ -172,7 +210,7 @@ int UART_initialize(int fd, speed_t speed, int flow_ctrl, int data_bits, int sto
 			return(0);
 	}
 	//close special output mode
-	options.c_oflag &= ~OPOST;
+	options.c_cflag &= ~OPOST;//oflag!!!!
 	
 	//wait time and minmum number of "bytes"
 	options.c_cc[VTIME]= 1;//wait for 0.1s
